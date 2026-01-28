@@ -13,7 +13,7 @@ except:
 
 genai.configure(api_key=API_KEY)
 # Usiamo il modello Flash perché ha tanta memoria ed è veloce
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # --- INTERFACCIA WEB ---
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
