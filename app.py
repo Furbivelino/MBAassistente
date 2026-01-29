@@ -2,54 +2,47 @@ import streamlit as st
 from groq import Groq
 from pypdf import PdfReader
 
-# 1. Configurazione Iniziale
+# 1. Configurazione Groq
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception as e:
-    st.error("Errore: Manca la chiave GROQ nei Secrets!")
+except:
+    st.error("Manca la GROQ_API_KEY nei Secrets!")
     st.stop()
 
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
 st.title("🏥 Assistente MBAfesica")
-st.markdown("Carica i tuoi PDF e chiedimi qualunque cosa sui rimborsi e le coperture.")
 
-# --- CARICAMENTO PDF ---
-uploaded_file = st.file_uploader("Trascina qui il file PDF (es. IntegraFesica.pdf)", type="pdf")
+# Possibilità di caricare più file contemporaneamente
+uploaded_files = st.file_uploader("Carica i PDF (Regolamenti, Guide, Integrazioni)", type="pdf", accept_multiple_files=True)
 
-if uploaded_file:
-    # Estrazione del testo
-    with st.spinner("Lettura del documento in corso..."):
-        reader = PdfReader(uploaded_file)
-        full_text = ""
-        for page in reader.pages:
-            full_text += page.extract_text() + "\n"
+if uploaded_files:
+    full_text = ""
+    with st.spinner("Lettura dei documenti in corso..."):
+        for uploaded_file in uploaded_files:
+            reader = PdfReader(uploaded_file)
+            for page in reader.pages:
+                content = page.extract_text()
+                if content:
+                    full_text += content + "\n"
     
-    st.success("Documento pronto per l'analisi!")
+    st.success(f"Analisi completata! Ho letto tutto il materiale.")
 
-    # --- CHAT ---
-    if prompt := st.chat_input("Esempio: Cosa copre il pacchetto maternità?"):
+    if prompt := st.chat_input("Chiedimi pure: 'Cosa copre la garanzia X?'"):
         st.chat_message("user").write(prompt)
         
-        with st.spinner("L'IA sta analizzando il regolamento..."):
+        with st.spinner("Sto cercando nei regolamenti..."):
             try:
-                # Usiamo Llama 3.3 70B: è il modello più potente su Groq
+                # Abbiamo alzato il limite a 100.000 caratteri!
+                context = full_text[:100000] 
+                
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
-                        {
-                            "role": "system", 
-                            "content": "Sei un esperto di fondi sanitari integrativi. Rispondi in modo preciso e professionale usando esclusivamente il testo fornito. Se l'informazione non è presente, dillo chiaramente."
-                        },
-                        {
-                            "role": "user", 
-                            "content": f"Documento di riferimento:\n{full_text}\n\nDomanda dell'utente: {prompt}"
-                        }
+                        {"role": "system", "content": "Sei l'assistente ufficiale della Mutua MBA. Rispondi in modo tecnico ma chiaro, citando se possibile le sezioni del testo. Se la risposta non è nel testo, consiglia di contattare la centrale salute."},
+                        {"role": "user", "content": f"DOCUMENTI:\n{context}\n\nDOMANDA:\n{prompt}"}
                     ],
-                    temperature=0.2, # Teniamo l'IA "seria" e precisa
+                    temperature=0.1, 
                 )
-                
-                risposta_testo = response.choices[0].message.content
-                st.chat_message("assistant").write(risposta_testo)
-                
+                st.chat_message("assistant").write(response.choices[0].message.content)
             except Exception as e:
-                st.error(f"Errore nella generazione della risposta: {e}")
+                st.error(f"Errore: {e}")
