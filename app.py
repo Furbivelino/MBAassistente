@@ -2,13 +2,13 @@ import streamlit as st
 from groq import Groq
 from pypdf import PdfReader
 
-# --- 1. INIZIALIZZAZIONE SESSIONE (MEMORIA) ---
+# --- 1. MEMORIA DI SESSIONE ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [] # Qui salviamo la cronologia della chat
+    st.session_state.messages = []
 if "full_text" not in st.session_state:
-    st.session_state.full_text = "" # Qui salviamo il testo dei PDF per non rileggerli ogni volta
+    st.session_state.full_text = ""
 
-# --- 2. CONFIGURAZIONE GROQ ---
+# --- 2. CONFIGURAZIONE ---
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except:
@@ -18,63 +18,52 @@ except:
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
 st.title("🏥 Assistente MBAfesica")
 
-# --- 3. GESTIONE DOCUMENTI ---
+# --- 3. BARRA LATERALE PER I PDF ---
 with st.sidebar:
     st.header("Documenti")
-    uploaded_files = st.file_uploader("Carica i PDF", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Carica i PDF (max 3-4 alla volta)", type="pdf", accept_multiple_files=True)
     
     if uploaded_files:
         testo_estratto = ""
         for uploaded_file in uploaded_files:
             reader = PdfReader(uploaded_file)
             for page in reader.pages:
-                testo_estratto += page.extract_text() + "\n"
-        st.session_state.full_text = testo_estratto
+                t = page.extract_text()
+                if t: testo_estratto += t + "\n"
+        # Salviamo il testo ed evitiamo che superi i 25.000 caratteri per sicurezza
+        st.session_state.full_text = testo_estratto[:25000] 
         st.success("Documenti pronti!")
     
-    if st.button("Cancella Cronologia Chat"):
+    if st.button("Svuota Chat"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 4. VISUALIZZAZIONE CHAT ---
+# --- 4. CHAT ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- 5. LOGICA DI RISPOSTA ---
-if prompt := st.chat_input("Chiedimi pure..."):
-    # Mostra e salva il messaggio dell'utente
+if prompt := st.chat_input("Chiedimi dei rimborsi o delle strutture..."):
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("assistant"):
-        with st.spinner("Analizzo i documenti e la nostra conversazione..."):
+        with st.spinner("Ricerca in corso..."):
             try:
-                # Prepariamo il contesto dai documenti (max 30k caratteri per stare nei limiti free)
-                contesto_documenti = st.session_state.full_text[:30000]
-                
-                # Costruiamo i messaggi per l'IA includendo la cronologia
-                history = [
-                    {"role": "system", "content": f"Sei l'assistente Mutua MBA. Usa questo testo come riferimento: {contesto_documenti}. Rispondi in italiano in modo preciso."}
-                ]
-                # Aggiungiamo gli ultimi 4 messaggi per dare memoria
-                for m in st.session_state.messages[-5:]:
-                    history.append({"role": m["role"], "content": m["content"]})
-
+                # CAMBIO MODELLO: Usiamo 'llama-3.1-8b-instant' che ha limiti molto più alti
                 response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=history,
-                    temperature=0.2,
+                    model="llama-3.1-8b-instant", 
+                    messages=[
+                        {"role": "system", "content": f"Sei l'assistente Mutua MBA. Rispondi usando questo testo: {st.session_state.full_text}"},
+                        *st.session_state.messages[-5:] # Ricorda gli ultimi 5 messaggi
+                    ],
+                    temperature=0.1,
                 )
                 
-                full_response = response.choices[0].message.content
-                st.markdown(full_response)
-                
-                # Salva la risposta dell'IA nella memoria
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                risposta = response.choices[0].message.content
+                st.markdown(risposta)
+                st.session_state.messages.append({"role": "assistant", "content": risposta})
                 
             except Exception as e:
-                if "rate_limit" in str(e).lower():
-                    st.error("⏳ Troppe domande ravvicinate! Aspetta 30 secondi e riprova.")
-                else:
-                    st.error(f"Errore: {e}")
+                st.error(f"Errore tecnico: {e}")
+                st.info("Consiglio: Se l'errore persiste, prova a caricare un solo PDF alla volta.")
