@@ -2,81 +2,79 @@ import streamlit as st
 from groq import Groq
 from pypdf import PdfReader
 
-# --- CONFIGURAZIONE GROQ ---
+# --- 1. INIZIALIZZAZIONE SESSIONE (MEMORIA) ---
+if "messages" not in st.session_state:
+    st.session_state.messages = [] # Qui salviamo la cronologia della chat
+if "full_text" not in st.session_state:
+    st.session_state.full_text = "" # Qui salviamo il testo dei PDF per non rileggerli ogni volta
+
+# --- 2. CONFIGURAZIONE GROQ ---
 try:
-    # Recupera la chiave dai Secrets di Streamlit
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception as e:
-    st.error("Manca la GROQ_API_KEY nei Secrets di Streamlit!")
+except:
+    st.error("Manca la chiave API nei Secrets!")
     st.stop()
 
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="Assistente Mutua MBA", page_icon="🏥", layout="centered")
+st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
 st.title("🏥 Assistente MBAfesica")
-st.markdown("""
-Carica i regolamenti e le integrazioni (PDF). 
-**Consiglio:** Escludi il file delle Strutture Convenzionate per evitare di superare i limiti di memoria dell'IA.
-""")
 
-# --- CARICAMENTO E LETTURA PDF ---
-uploaded_files = st.file_uploader(
-    "Carica i documenti della Mutua", 
-    type="pdf", 
-    accept_multiple_files=True
-)
-
-if uploaded_files:
-    full_text = ""
-    with st.spinner("Lettura dei file in corso..."):
-        for uploaded_file in uploaded_files:
-            try:
-                reader = PdfReader(uploaded_file)
-                for page in reader.pages:
-                    content = page.extract_text()
-                    if content:
-                        full_text += content + "\n"
-            except Exception as e:
-                st.warning(f"Impossibile leggere il file {uploaded_file.name}: {e}")
+# --- 3. GESTIONE DOCUMENTI ---
+with st.sidebar:
+    st.header("Documenti")
+    uploaded_files = st.file_uploader("Carica i PDF", type="pdf", accept_multiple_files=True)
     
-    if full_text:
-        st.success(f"Analisi completata! Ho letto {len(uploaded_files)} file.")
-        
-        # --- CHAT INTERFACE ---
-        if prompt := st.chat_input("Chiedimi, ad esempio: 'Quanto è il massimale per i ricoveri?'"):
-            st.chat_message("user").write(prompt)
-            
-            with st.spinner("Consulto i regolamenti..."):
-                try:
-                    # LIMITE TOKEN: Tagliamo il testo a 30.000 caratteri 
-                    # per stare abbondantemente sotto i 12.000 token di Groq Free.
-                    context_limitato = full_text[:30000]
-                    
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[
-                            {
-                                "role": "system", 
-                                "content": (
-                                    "Sei un assistente esperto della Mutua MBA. Rispondi in modo professionale "
-                                    "usando esclusivamente le informazioni fornite nei documenti. "
-                                    "Se l'informazione non è presente, dillo chiaramente."
-                                )
-                            },
-                            {
-                                "role": "user", 
-                                "content": f"DOCUMENTI:\n{context_limitato}\n\nDOMANDA:\n{prompt}"
-                            }
-                        ],
-                        temperature=0.1, # Risposte precise e non inventate
-                    )
-                    
-                    risposta = response.choices[0].message.content
-                    st.chat_message("assistant").write(risposta)
-                    
-                except Exception as e:
-                    if "rate_limit_exceeded" in str(e):
-                        st.error("🚨 Limite di traffico raggiunto. Riprova tra 60 secondi o carica meno documenti.")
-                    else:
-                        st.error(f"Errore tecnico: {e}")
-    else:
-        st.error("Non è stato possibile estrarre testo dai PDF. Verifica che non siano solo immagini.")
+    if uploaded_files:
+        testo_estratto = ""
+        for uploaded_file in uploaded_files:
+            reader = PdfReader(uploaded_file)
+            for page in reader.pages:
+                testo_estratto += page.extract_text() + "\n"
+        st.session_state.full_text = testo_estratto
+        st.success("Documenti pronti!")
+    
+    if st.button("Cancella Cronologia Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+# --- 4. VISUALIZZAZIONE CHAT ---
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# --- 5. LOGICA DI RISPOSTA ---
+if prompt := st.chat_input("Chiedimi pure..."):
+    # Mostra e salva il messaggio dell'utente
+    st.chat_message("user").markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("assistant"):
+        with st.spinner("Analizzo i documenti e la nostra conversazione..."):
+            try:
+                # Prepariamo il contesto dai documenti (max 30k caratteri per stare nei limiti free)
+                contesto_documenti = st.session_state.full_text[:30000]
+                
+                # Costruiamo i messaggi per l'IA includendo la cronologia
+                history = [
+                    {"role": "system", "content": f"Sei l'assistente Mutua MBA. Usa questo testo come riferimento: {contesto_documenti}. Rispondi in italiano in modo preciso."}
+                ]
+                # Aggiungiamo gli ultimi 4 messaggi per dare memoria
+                for m in st.session_state.messages[-5:]:
+                    history.append({"role": m["role"], "content": m["content"]})
+
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=history,
+                    temperature=0.2,
+                )
+                
+                full_response = response.choices[0].message.content
+                st.markdown(full_response)
+                
+                # Salva la risposta dell'IA nella memoria
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                
+            except Exception as e:
+                if "rate_limit" in str(e).lower():
+                    st.error("⏳ Troppe domande ravvicinate! Aspetta 30 secondi e riprova.")
+                else:
+                    st.error(f"Errore: {e}")
