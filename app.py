@@ -16,12 +16,13 @@ except:
     st.stop()
 
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
-st.title("🏥 Assistente MBAfesica")
+st.title("🏥 Assistente MBA (Versione Ottimizzata)")
 
-# --- 3. BARRA LATERALE PER I PDF ---
+# --- 3. BARRA LATERALE ---
 with st.sidebar:
-    st.header("Documenti")
-    uploaded_files = st.file_uploader("Carica i PDF (max 3-4 alla volta)", type="pdf", accept_multiple_files=True)
+    st.header("📂 Documenti")
+    st.info("⚠️ Carica solo i file necessari (es. Regolamento + Integrazione). Escludi le Strutture se cerchi rimborsi.")
+    uploaded_files = st.file_uploader("Carica PDF", type="pdf", accept_multiple_files=True)
     
     if uploaded_files:
         testo_estratto = ""
@@ -30,32 +31,39 @@ with st.sidebar:
             for page in reader.pages:
                 t = page.extract_text()
                 if t: testo_estratto += t + "\n"
-        # Salviamo il testo ed evitiamo che superi i 25.000 caratteri per sicurezza
-        st.session_state.full_text = testo_estratto[:25000] 
-        st.success("Documenti pronti!")
+        
+        # LIMITE DI SICUREZZA: 18.000 caratteri (~6000 token)
+        # Lasciamo spazio per la chat history e la risposta dell'IA
+        st.session_state.full_text = testo_estratto[:18000] 
+        st.success(f"Documenti pronti ({len(uploaded_files)} file)")
     
-    if st.button("Svuota Chat"):
+    if st.button("🗑️ Svuota Chat"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 4. CHAT ---
+# --- 4. VISUALIZZAZIONE CHAT ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Chiedimi dei rimborsi o delle strutture..."):
+# --- 5. LOGICA DI RISPOSTA ---
+if prompt := st.chat_input("Chiedimi dei rimborsi o delle valvole mitrali..."):
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("assistant"):
-        with st.spinner("Ricerca in corso..."):
+        with st.spinner("Consulto i regolamenti..."):
             try:
-                # CAMBIO MODELLO: Usiamo 'llama-3.1-8b-instant' che ha limiti molto più alti
+                # Torniamo al 70B che ha il limite Token più alto (12k)
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant", 
+                    model="llama-3.3-70b-versatile", 
                     messages=[
-                        {"role": "system", "content": f"Sei l'assistente Mutua MBA. Rispondi usando questo testo: {st.session_state.full_text}"},
-                        *st.session_state.messages[-5:] # Ricorda gli ultimi 5 messaggi
+                        {
+                            "role": "system", 
+                            "content": f"Sei l'assistente MBA. Usa questo testo: {st.session_state.full_text}. Rispondi in modo sintetico."
+                        },
+                        # Inviamo solo gli ULTIMI 2 messaggi per risparmiare spazio prezioso
+                        *st.session_state.messages[-3:] 
                     ],
                     temperature=0.1,
                 )
@@ -65,5 +73,7 @@ if prompt := st.chat_input("Chiedimi dei rimborsi o delle strutture..."):
                 st.session_state.messages.append({"role": "assistant", "content": risposta})
                 
             except Exception as e:
-                st.error(f"Errore tecnico: {e}")
-                st.info("Consiglio: Se l'errore persiste, prova a caricare un solo PDF alla volta.")
+                if "rate_limit_exceeded" in str(e):
+                    st.error("🚨 Troppi dati! Prova a caricare un solo file o cancella la chat.")
+                else:
+                    st.error(f"Errore: {e}")
