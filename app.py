@@ -1,57 +1,55 @@
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 from pypdf import PdfReader
-import time
 
-# 1. Recupero API KEY
+# 1. Configurazione Iniziale
 try:
-    API_KEY = st.secrets["GOOGLE_API_KEY"]
-except:
-    st.error("Manca la API KEY nei Secrets!")
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+except Exception as e:
+    st.error("Errore: Manca la chiave GROQ nei Secrets!")
     st.stop()
 
-# 2. Configurazione
-genai.configure(api_key=API_KEY)
-
-# Usiamo la versione LITE: meno probabile che dia errore 429 (quota)
-model = genai.GenerativeModel('gemini-2.0-flash-lite')
-
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
-st.title("🏥 Assistente Mutua MBA")
+st.title("🏥 Assistente MBAfesica (Fast Mode)")
+st.markdown("Carica i tuoi PDF e chiedimi qualunque cosa sui rimborsi e le coperture.")
 
 # --- CARICAMENTO PDF ---
-st.warning("⚠️ Per evitare blocchi, prova a caricare UN SOLO PDF alla volta.")
-uploaded_files = st.file_uploader("Carica i PDF", type="pdf", accept_multiple_files=True)
+uploaded_file = st.file_uploader("Trascina qui il file PDF (es. IntegraFesica.pdf)", type="pdf")
 
-if uploaded_files:
-    full_text = ""
-    for pdf_file in uploaded_files:
-        try:
-            reader = PdfReader(pdf_file)
-            for page in reader.pages:
-                text = page.extract_text()
-                if text:
-                    full_text += text + "\n"
-        except:
-            st.error(f"Errore nella lettura di {pdf_file.name}")
+if uploaded_file:
+    # Estrazione del testo
+    with st.spinner("Lettura del documento in corso..."):
+        reader = PdfReader(uploaded_file)
+        full_text = ""
+        for page in reader.pages:
+            full_text += page.extract_text() + "\n"
     
-    if full_text:
-        st.success("Documenti caricati!")
-    
-        # --- CHAT ---
-        if prompt := st.chat_input("Fai una domanda (es: cosa copre il pacchetto odontoiatrico?)"):
-            st.chat_message("user").write(prompt)
-            
-            with st.spinner("Sto consultando i documenti..."):
-                # Trucco: prendiamo solo i primi 15.000 caratteri per non intasare la quota gratis
-                testo_limitato = full_text[:15000] 
+    st.success("Documento pronto per l'analisi!")
+
+    # --- CHAT ---
+    if prompt := st.chat_input("Esempio: Cosa copre il pacchetto maternità?"):
+        st.chat_message("user").write(prompt)
+        
+        with st.spinner("L'IA sta analizzando il regolamento..."):
+            try:
+                # Usiamo Llama 3.3 70B: è il modello più potente su Groq
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": "Sei un esperto di fondi sanitari integrativi. Rispondi in modo preciso e professionale usando esclusivamente il testo fornito. Se l'informazione non è presente, dillo chiaramente."
+                        },
+                        {
+                            "role": "user", 
+                            "content": f"Documento di riferimento:\n{full_text}\n\nDomanda dell'utente: {prompt}"
+                        }
+                    ],
+                    temperature=0.2, # Teniamo l'IA "seria" e precisa
+                )
                 
-                try:
-                    context = f"Testo dei regolamenti:\n{testo_limitato}\n\nDomanda: {prompt}\nRispondi in italiano."
-                    response = model.generate_content(context)
-                    st.chat_message("assistant").write(response.text)
-                except Exception as e:
-                    if "429" in str(e):
-                        st.error("🚨 Google dice che stiamo chiedendo troppo velocemente. Aspetta 60 secondi e riprova con un file più piccolo.")
-                    else:
-                        st.error(f"Errore tecnico: {e}")
+                risposta_testo = response.choices[0].message.content
+                st.chat_message("assistant").write(risposta_testo)
+                
+            except Exception as e:
+                st.error(f"Errore nella generazione della risposta: {e}")
