@@ -10,7 +10,7 @@ except Exception as e:
     st.stop()
 
 st.set_page_config(page_title="Assistente MBA", page_icon="🏥")
-st.title("🏥 Assistente MBAfesica (Fast Mode)")
+st.title("🏥 Assistente MBAfesica")
 st.markdown("Carica i tuoi PDF e chiedimi qualunque cosa sui rimborsi e le coperture.")
 
 # --- CARICAMENTO PDF ---
