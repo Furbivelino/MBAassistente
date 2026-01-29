@@ -15,12 +15,12 @@ except:
     st.stop()
 
 st.set_page_config(page_title="MBA Expert Assistant", page_icon="⚖️")
-st.title("⚖️ Assistente MBAfesica")
+st.title("⚖️ Analista MBAfesica")
 
 # --- SIDEBAR DOCUMENTI ---
 with st.sidebar:
-    st.header("Documentazione")
-    uploaded_files = st.file_uploader("Carica i PDF del Piano Sanitario", type="pdf", accept_multiple_files=True)
+    st.header("📂 Documentazione")
+    uploaded_files = st.file_uploader("Carica i PDF", type="pdf", accept_multiple_files=True)
     if uploaded_files:
         testo = ""
         for f in uploaded_files:
@@ -28,11 +28,10 @@ with st.sidebar:
             for page in reader.pages:
                 t = page.extract_text()
                 if t: testo += f"--- DOC: {f.name} ---\n{t}\n"
-        # Limite prudenziale per evitare Error 413 su Groq Free
         st.session_state.full_text = testo[:22000] 
-        st.success("Documenti analizzati e pronti.")
+        st.success("Documenti caricati.")
     
-    if st.button("Pulisci Conversazione"):
+    if st.button("🗑️ Pulisci Chat"):
         st.session_state.messages = []
         st.rerun()
 
@@ -48,29 +47,31 @@ if prompt := st.chat_input("Esempio: Intervento valvola mitrale al San Camillo")
     with st.chat_message("assistant"):
         with st.spinner("Analisi tecnica in corso..."):
             try:
-                # SYSTEM PROMPT MIRATO (MODALITÀ LIQUIDATORE)
+                # SYSTEM PROMPT AGGIORNATO: NESSUNA DELEGA ALL'UTENTE
                 system_instruction = (
-                    "Sei un Liquidatore Sinistri esperto della Mutua MBA. Il tuo obiettivo è fornire risposte "
-                    "estremamente tecniche, precise e basate unicamente sui documenti forniti.\n\n"
-                    "Segui rigorosamente questo schema di analisi per ogni domanda:\n"
-                    "1. IDENTIFICAZIONE PRESTAZIONE: Capisci se si tratta di Ricovero, Alta Diagnostica, o Prevenzione.\n"
-                    "2. VERIFICA NETWORK: Controlla se l'utente nomina una struttura. Se è San Camillo (o simile), "
-                    "spiega la differenza tra strutture convenzionate (copertura 100%) e fuori rete (massimali ridotti).\n"
-                    "3. RICERCA MASSIMALI: Cita il tetto massimo di spesa (es. €100.000 per ricoveri).\n"
-                    "4. APPLICAZIONE FRANCHIGIE/SCOPERTI: Indica se ci sono quote a carico dell'associato (es. €30 per esame).\n"
-                    "5. CONCLUSIONE: Se l'informazione specifica non c'è, indica esattamente quale capitolo del "
-                    "regolamento dovrebbe consultare l'utente.\n\n"
-                    "Usa grassetti per i valori monetari e tabelle se devi confrontare opzioni."
+                    "Sei un Liquidatore Sinistri esperto della Mutua MBA. Il tuo compito è fornire risposte "
+                    "COMPLETE e DEFINITIVE basandoti sui testi forniti. NON delegare la ricerca all'utente.\n\n"
+                    "Segui rigorosamente questo schema senza eccezioni:\n\n"
+                    "1. IDENTIFICAZIONE PRESTAZIONE: Definisci la categoria (es. Ricovero con intervento).\n\n"
+                    "2. VERIFICA NETWORK: Se l'utente cita una struttura, spiega che DEVE verificare se è convenzionata. "
+                    "POI, esponi chiaramente entrambi gli scenari:\n"
+                    "   - SE CONVENZIONATA: riporta la copertura prevista (es. 100%).\n"
+                    "   - SE NON CONVENZIONATA: riporta esattamente cosa prevede il regolamento per il fuori rete (es. massimali ridotti o rimborsi forfettari).\n\n"
+                    "3. RICERCA MASSIMALI: Cerca nel testo i valori numerici e riportali (es. 100.000€, 8.000€, ecc.). "
+                    "Se il testo parla di massimali, DEVI scriverli qui. NON dire 'consulta il manuale'.\n\n"
+                    "4. FRANCHIGIE E SCOPERTI: Cerca e mostra i costi fissi a carico dell'associato (es. 30€ a evento o scoperti del 20%).\n\n"
+                    "5. CONCLUSIONE: Riassumi la fattibilità della richiesta.\n\n"
+                    "IMPORTANTE: Se le informazioni sono presenti nei documenti caricati, DEVI usarle. Sii sintetico ma esaustivo."
                 )
 
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": system_instruction},
-                        {"role": "system", "content": f"CONTESTO DOCUMENTI:\n{st.session_state.full_text}"},
+                        {"role": "system", "content": f"CONTESTO DOCUMENTI CARICATI:\n{st.session_state.full_text}"},
                         *st.session_state.messages[-3:]
                     ],
-                    temperature=0.1, # Bassissima creatività, massima fedeltà al testo
+                    temperature=0.1,
                 )
                 
                 answer = response.choices[0].message.content
