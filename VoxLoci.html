@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>VOXLOCI Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;max-width:480px;margin:0 auto;}
+.topbar{background:#fff;padding:14px 16px 10px;border-bottom:1px solid #e5e5ea;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;}
+.back-btn{font-size:26px;color:#007aff;cursor:pointer;padding:2px 10px 2px 0;display:none;line-height:1;}
+.tb-wrap{flex:1;}
+.tb-name{font-size:16px;font-weight:600;}
+.tb-sub{font-size:12px;color:#8e8e93;margin-top:1px;}
+.list-view{padding-bottom:40px;}
+.sec-hdr{font-size:11px;font-weight:600;color:#8e8e93;letter-spacing:0.06em;text-transform:uppercase;padding:16px 16px 6px;background:#f2f2f7;}
+.poi-row{background:#fff;display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid #f2f2f7;min-height:68px;}
+.poi-row:active{background:#e5e5ea;}
+.poi-ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.i-church{background:#eeedfe;}.i-castle{background:#fce8e8;}.i-event{background:#faeeda;}.i-nature{background:#dff5ee;}
+.poi-txt{flex:1;min-width:0;}
+.poi-n{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.poi-s{font-size:12px;color:#8e8e93;margin-top:2px;}
+.poi-arr{font-size:20px;color:#c7c7cc;flex-shrink:0;}
+.player-view{display:none;flex-direction:column;padding-bottom:30px;}
+.hero{background:#fff;padding:16px;}
+.art{width:100%;height:140px;border-radius:16px;background:#f2f2f7;display:flex;align-items:center;justify-content:center;font-size:56px;margin-bottom:12px;}
+.poi-title{font-size:19px;font-weight:600;}
+.poi-loc{font-size:13px;color:#8e8e93;margin-top:3px;}
+.tabs{display:flex;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5ea;}
+.tab{flex:1;padding:10px 6px;border-radius:10px;font-size:13px;font-weight:500;text-align:center;border:1px solid #d1d1d6;color:#8e8e93;background:#fff;}
+.tab.on{background:#e8f4ff;color:#007aff;border-color:#007aff;}
+.transcript-wrap{padding:12px 16px 8px;}
+.tbox{background:#fff;border-radius:12px;padding:14px;min-height:140px;max-height:200px;overflow-y:auto;}
+.tbox p{font-size:14px;line-height:1.75;}
+.w-done{color:#c7c7cc;}.w-now{color:#1c1c1e;font-weight:600;}.w-next{color:#8e8e93;}
+.wave{display:flex;align-items:center;gap:3px;height:36px;padding:0 16px;}
+.wb{flex:1;border-radius:2px;background:#e5e5ea;height:4px;transition:height 0.08s;}
+.wb.on{background:#34c759;}
+.prog-wrap{padding:2px 16px 6px;}
+.prog-bg{height:6px;background:#e5e5ea;border-radius:3px;position:relative;}
+.prog-fill{height:100%;background:#34c759;border-radius:3px;transition:width 0.4s linear;}
+.prog-times{display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-top:5px;}
+.controls{display:flex;align-items:center;justify-content:space-around;padding:10px 16px 14px;background:#fff;}
+.cbtn{width:54px;height:54px;border-radius:50%;border:1px solid #d1d1d6;background:#fff;font-size:16px;}
+.cbtn:active{background:#e5e5ea;}
+.pbtn{width:68px;height:68px;background:#34c759;border:none;font-size:24px;color:#fff;}
+.pbtn:active{background:#28a745;}
+.spd{font-size:12px;font-weight:600;}
+.cards{padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
+.card{border-radius:12px;padding:12px 14px;}
+.card.flag{background:#fffbeb;border:1px solid #f59e0b;}
+.card.pivot{background:#fff;border:1px solid #e5e5ea;}
+.card-lbl{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px;}
+.card.flag .card-lbl{color:#b45309;}.card.pivot .card-lbl{color:#8e8e93;}
+.card-txt{font-size:13px;line-height:1.55;}
+.card.flag .card-txt{color:#92400e;}
+.card-cta{font-size:12px;font-weight:600;color:#007aff;margin-top:6px;}
+.notice{margin:12px 16px;padding:12px 14px;background:#fff;border-radius:12px;font-size:13px;color:#8e8e93;line-height:1.6;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" id="btn-back-list" style="background:none;border:none;font-size:26px;color:#007aff;padding:2px 10px 2px 0;display:none;">‹</button>
+  <div class="tb-wrap">
+    <div class="tb-name" id="tb-name">VOXLOCI</div>
+    <div class="tb-sub" id="tb-sub">6 narrazioni — 2 borghi</div>
+  </div>
+</div>
+
+<div class="list-view" id="list-view">
+  <div class="sec-hdr">Rocca di Mezzo (AQ) · 1.329 m</div>
+  <button onclick="openPOI(0)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-church">⛪</div>
+      <div class="poi-txt"><div class="poi-n">Chiesa della Madonna della Neve</div><div class="poi-s">Lu Bulvere · Edificio di culto · RDM-001</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <button onclick="openPOI(1)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-castle">🏰</div>
+      <div class="poi-txt"><div class="poi-n">Rocca di Rovere</div><div class="poi-s">Frazione 1.413 m · Castello normanno · RDM-013</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <button onclick="openPOI(2)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-event">🌸</div>
+      <div class="poi-txt"><div class="poi-n">Festa del Narciso</div><div class="poi-s">Evento annuale · Dal 18 maggio 1947 · RDM-012</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <div class="sec-hdr">San Teodoro (SS) · Gallura</div>
+  <button onclick="openPOI(3)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-nature">🏖️</div>
+      <div class="poi-txt"><div class="poi-n">Spiaggia La Cinta</div><div class="poi-s">Costa nord · Spiaggia barriera · ST-001</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <button onclick="openPOI(4)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-nature">🦩</div>
+      <div class="poi-txt"><div class="poi-n">Laguna di Pischèra</div><div class="poi-s">Stagno costiero · Bottarga e fenicotteri · ST-003</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <button onclick="openPOI(5)" style="width:100%;background:none;border:none;padding:0;text-align:left;">
+    <div class="poi-row">
+      <div class="poi-ico i-event">🔥</div>
+      <div class="poi-txt"><div class="poi-n">Lu Fuculoni — Fuochi di Sant'Antonio</div><div class="poi-s">Evento · 16-17 gennaio · Straulas · ST-007</div></div>
+      <div class="poi-arr">›</div>
+    </div>
+  </button>
+  <div class="notice">Tocca un POI · poi premi ▶<br>Volume attivo, suoneria non silenziata</div>
+</div>
+
+<div class="player-view" id="player-view">
+  <div class="hero">
+    <div class="art" id="p-art">⛪</div>
+    <div class="poi-title" id="p-name"></div>
+    <div class="poi-loc" id="p-loc"></div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="tab-s" onclick="setMode('s')" style="-webkit-appearance:none;">🎙 Storyteller</button>
+    <button class="tab" id="tab-e" onclick="setMode('e')" style="-webkit-appearance:none;">🔬 Expert</button>
+  </div>
+  <div class="transcript-wrap">
+    <div class="tbox" id="tbox"></div>
+  </div>
+  <div class="wave" id="wave"></div>
+  <div class="prog-wrap">
+    <div class="prog-bg" id="prog-bg" onclick="seekClick(event)">
+      <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <div class="prog-times"><span id="t-el">0:00</span><span id="t-tot">0:00</span></div>
+  </div>
+  <div class="controls">
+    <button class="cbtn" onclick="doRestart()">↺</button>
+    <button class="cbtn" onclick="skip(-10)">«10</button>
+    <button class="cbtn pbtn" id="btn-play" onclick="doPlay()">▶</button>
+    <button class="cbtn" onclick="skip(10)">10»</button>
+    <button class="cbtn spd" id="btn-speed" onclick="cycleSpeed()">1×</button>
+  </div>
+  <div class="cards">
+    <div class="card flag" id="flag-card"></div>
+    <div class="card pivot" id="pivot-card"></div>
+  </div>
+</div>
+
+<script>
+var POIS=[
+{id:0,name:"Chiesa della Madonna della Neve",loc:"Lu Bulvere · Rocca di Mezzo · RDM-001",art:"⛪",
+flag:"Verificare entità danni post-sisma L'Aquila 2009. Datazione precisa con Archivio Diocesano dei Marsi.",
+pivot:"La pietra di questa chiesa e la lana dell'Altopiano hanno tenuto caldo Rocca di Mezzo per secoli. A [X] metri da qui, [NOME BOTTEGA] lavora ancora la lana della Marsica.",
+cta:"Mostra questa schermata: 10% di sconto sulla linea Altopiano →",
+s:"Fermati un momento. Respira. Guarda il campanile. Sembra solo un campanile, ma non lo è. Mille anni fa, su questa stessa roccia calcarea, si ergeva una torre di guardia. I pastori dell'Altopiano la usavano per scrutare le valli. Il Velino a ovest, il Sirente a nordest. Nel 1423, Braccio da Montone assediò Rocca di Mezzo per un anno intero prima di espugnarla. Un anno. Questi muri hanno resistito un anno intero. Poi un giorno qualcuno decise che la torre non serviva più. Il castello fu demolito. Al suo posto costruirono una chiesa. E dove c'era il punto più alto alzarono un campanile. La torre è scomparsa. Ma la posizione è la stessa. Sei esattamente dove stavano i guardiani di Rocca di Mezzo.",
+e:"La Chiesa della Madonna della Neve è un caso esemplare di palinsesto architettonico: la sovrapposizione di funzioni e stili su un unico sito nel corso di molti secoli. L'area era occupata dal castello medievale, di cui il campanile è l'elemento che più rivela questa stratificazione storica. L'edificio riflette tre fasi costruttive: il nucleo quattrocentesco riconducibile al vescovo Amico Agnifili nel 1431; i rimaneggiamenti settecenteschi tipici dell'architettura religiosa rurale abruzzese; il restauro post-sismico del 1915 che conferì alla facciata l'aspetto neoromanico e agli interni un registro neoclassico."},
+{id:1,name:"Rocca di Rovere",loc:"Frazione 1.413 m · Rocca di Mezzo · RDM-013",art:"🏰",
+flag:"PRIORITÀ ALTA — Richiedere a Soprintendenza ABAP L'Aquila schede di vincolo. GPS precise da rilevare in loco.",
+pivot:"La transumanza che Rocca di Rovere controllava per secoli produceva i formaggi che trovi ancora oggi. [CASEIFICIO LOCALE] usa ancora latte dell'Altopiano.",
+cta:"Assaggia l'Altopiano — prodotti a km zero con VOXLOCI →",
+s:"Rocca di Rovere è in cima. Letteralmente: a mille quattrocento tredici metri, è il punto più alto del comune. E si vede. L'undicesimo secolo. I Normanni costruivano castelli sulle cime più alte, non per caso ma per controllo. Chi stava in cima vedeva tutto: i greggi in transumanza, i mercanti sui tratturi, i nemici in lontananza. Nel 1424, un anno dopo che Braccio da Montone aveva espugnato Rocca di Mezzo, arrivò anche qui. Rocca di Rovere resistette. Quel torrione pentagonale che vedi ancora oggi era abbastanza solido da far desistere uno dei più grandi condottieri del Quattrocento. Il torrione è ancora lì. Tutto il resto racconta mille anni di storia di montagna.",
+e:"Rocca di Rovere è un insediamento normanno d'alta quota di notevole integrità strutturale. Il castello-villaggio fu edificato tra undicesimo e dodicesimo secolo come presidio del sistema difensivo normanno nell'Appennino centrale. Il torrione pentagonale privilegiava forme poligonali per ottimizzare la resistenza agli impatti balistici. La resistenza all'assedio del 1424, distinto da quello del 1423 a Rocca di Mezzo, conferma l'efficacia del sistema. La funzione di controllo delle transumanze è documentata fino al diciassettesimo secolo."},
+{id:2,name:"Festa del Narciso",loc:"Evento annuale · Rocca di Mezzo · RDM-012",art:"🌸",
+flag:"Aggiornare data esatta edizione 2026 con Pro Loco. Raccogliere materiale audiovisivo delle prime edizioni.",
+pivot:"Il narciso selvatico non si compra, ma i suoi colori sì. [PRODUTTORE LOCALE] trasforma il simbolo del borgo in miele, cosmetici e tessuti decorati.",
+cta:"Scopri i prodotti al narciso — esperienza esclusiva VOXLOCI →",
+s:"Era il 1947. La guerra era finita da due anni, ma la distruzione era ancora dappertutto, nelle case, nelle famiglie, nella testa della gente. Qualcuno tra i giovani di Rocca di Mezzo aveva sentito parlare di una sfilata in California. A Pasadena ogni anno costruivano carri fatti di fiori. I narcisi dell'Altopiano fiorivano ogni maggio, spontanei e abbondanti. E allora perché no? La prima volta fu il 18 maggio 1947. Carri rudimentali su piattaforme di legno trainate da buoi. Fiori raccolti di notte sui prati. Una competizione segreta tra i quartieri del borgo. E la voglia di dire: siamo ancora vivi, e sappiamo anche festeggiare. Settantanove anni dopo il narciso fiorisce ancora. E Rocca di Mezzo festeggia ancora.",
+e:"La Festa del Narciso è un caso di studio per l'antropologia culturale delle feste popolari italiane del dopoguerra. Prima edizione: 18 maggio 1947, ideata da giovani locali come risposta rituale al trauma bellico. Il modello della Rose Parade di Pasadena fu trasmesso da emigranti locali tornati in patria. L'organizzazione prevede raccolta notturna dei fiori, costruzione dei carri allegorici infiorati e competizione tra frazioni. Non ha radici medievali documentate. La sua autenticità risiede nella storia recente, non in un medioevo reinventato."},
+{id:3,name:"Spiaggia La Cinta",loc:"Costa nord · San Teodoro · ST-001",art:"🏖️",
+flag:"Verificare con AMP Tavolara: classificazione ufficiale, zonazione di protezione, limitazioni stagionali.",
+pivot:"Dopo la spiaggia, [BAR LOCALE] è il posto dove il Vermentino ghiacciato incontra il tramonto sulla laguna. A cinque minuti dall'accesso principale.",
+cta:"Drink di benvenuto VOXLOCI — mostra questa schermata →",
+s:"Tre chilometri di sabbia bianca. Da un lato il mare aperto, quello vero, quello azzurro profondo, quello che arriva fino alla Corsica. Dall'altro la laguna, un'acqua ferma, verde, piena di vita silenziosa. La Cinta non è solo una spiaggia. È una linea. Un confine sottilissimo tra due mondi completamente diversi che qui si trovano a convivere, separati da qualche decina di metri di sabbia. In inverno è quasi deserta, solo vento, gabbiani e qualche pescatore. In estate diventa uno dei posti più fotografati della Sardegna. Ma è ugualmente bella in entrambe le stagioni, solo per ragioni diverse.",
+e:"La Cinta è una spiaggia barriera, formazione geomorfologica originata dall'accumulo di sedimenti sabbiosi che separa un bacino lagunare costiero dal mare aperto. Separa la Laguna di Pischèra dal Mar Tirreno. La doppia esposizione determina condizioni idrodinamiche e di temperatura significativamente differenti sui due lati, rilevanti sia per la balneazione che per la pesca lagunare. La sabbia fine chiara è caratteristica delle spiagge galluresi nord-orientali, composita da granuli di quarzo e calcite."},
+{id:4,name:"Laguna di Pischèra",loc:"Stagno costiero · San Teodoro · ST-003",art:"🦩",
+flag:"Distinguere bottarga di San Teodoro vs Cabras: prodotti diversi, mercati diversi. Verificare eventuale classificazione IGP.",
+pivot:"Quella bottarga che ti ho raccontato la trovi a 200 metri da qui. [PRODUTTORE] la lavora con le stesse reti e lo stesso rispetto per lo stagno di Pischèra.",
+cta:"Degustazione bottarga + Vermentino DOCG — esperienza VOXLOCI →",
+s:"Prima che esistessero le spiagge di Instagram, prima che arrivassero i turisti nordeuropei, prima di tutto questo, c'era la laguna. Lo stagno di Pischèra non è mai stato un luogo da cartolina. È sempre stato un luogo da lavoro. I pescatori galluresi ci entravano all'alba con le nasse, tiravano su muggini e anguille, e da quelle uova di muggine ricavavano la bottarga, l'oro grigio della Sardegna. Oggi la laguna è tutto questo insieme: un luogo di lavoro per i pescatori, una riserva naturale per i fenicotteri, una fonte di identità gastronomica per il borgo. E quel filo sottile di sabbia che la separa dal mare è la sua cornice perfetta.",
+e:"La Laguna di Pischèra è un bacino lagunare costiero di tipo stagnone, con acque a salinità variabile. La bottarga, uova di muggine salate ed essiccate, è la principale produzione della laguna. Il muggine è una specie eurialina che usa gli ambienti lagunari come zona di alimentazione prima di migrare in mare per la riproduzione. La bottarga di San Teodoro è distinta da quella di Cabras per le caratteristiche organolettiche legate al diverso ecosistema lagunare. La fauna include fenicottero rosa, airone cenerino, cavaliere d'Italia e specie di limicoli durante le migrazioni."},
+{id:5,name:"Lu Fuculoni — Fuochi di Sant'Antonio",loc:"Straulas · San Teodoro · 16-17 gennaio · ST-007",art:"🔥",
+flag:"Geo-referenziare Straulas e Suaredda. Verificare origini documentate del rito con Pro Loco San Teodoro.",
+pivot:"La tradizione dei fuochi si celebra con i sapori dell'inverno gallurese. [RISTORANTE LOCALE] propone la suppa cuàta e il Cannonau di Gallura per scaldarsi dopo la festa.",
+cta:"Menu della tradizione invernale — prenotazione VOXLOCI →",
+s:"Il 16 gennaio, quando il resto d'Italia festeggia Sant'Antonio con la benedizione degli animali, a San Teodoro succede qualcosa di più antico. In due luoghi del territorio, Straulas e Suaredda, si accendono i fuochi sacri. Non fuochi decorativi, non fuochi turistici. Fuochi veri, alti, che si vedono da lontano, che mandano faville nel cielo freddo di gennaio. Nessuno saprebbe dirti esattamente quando è iniziata questa tradizione. Forse prima che arrivasse il Cristianesimo, forse con esso. Il fuoco di metà inverno è uno dei riti più antichi dell'umanità. Purifica, scalda, segna il punto di svolta tra il buio e la luce. Sant'Antonio ci ha messo il nome sopra, ma il fuoco era già lì.",
+e:"I fuochi di Sant'Antonio Abate sono una tradizione diffusa nelle aree rurali della Sardegna, con compresenza di elementi liturgici cristiani e substrati rituali legati ai cicli stagionali. La collocazione in metà inverno è coerente con la fenomenologia delle feste del fuoco europee: simbolo di luce, purificazione e propiziazione del ciclo agricolo. La denominazione gallurese Lu Fuculoni significa il grande fuoco, e la pratica riflette stratificazioni culturali di lunga durata."}
+];
+
+var synth=window.speechSynthesis;
+var cur=null,mode='s',playing=false,speed=1;
+var elapsed=0,total=0,wIdx=0,sIdx=0;
+var wTimer=null,pTimer=null,words=[];
+var speeds=[1,1.25,0.8],spLbls=['1x','1.25x','0.8x'];
+
+function fmt(s){var m=Math.floor(s/60),sc=Math.floor(s%60);return m+':'+(sc<10?'0':'')+sc;}
+
+document.getElementById('btn-back-list').onclick=function(){goList();};
+
+function goList(){
+  synth.cancel();playing=false;
+  clearInterval(wTimer);clearInterval(pTimer);animWave(false);
+  document.getElementById('player-view').style.display='none';
+  document.getElementById('list-view').style.display='block';
+  document.getElementById('btn-back-list').style.display='none';
+  document.getElementById('tb-name').textContent='VOXLOCI';
+  document.getElementById('tb-sub').textContent='6 narrazioni — 2 borghi';
+}
+
+function openPOI(i){
+  synth.cancel();playing=false;
+  clearInterval(wTimer);clearInterval(pTimer);
+  cur=POIS[i];mode='s';
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('player-view').style.display='flex';
+  document.getElementById('btn-back-list').style.display='block';
+  document.getElementById('tb-name').textContent=cur.name;
+  document.getElementById('tb-sub').textContent=cur.loc;
+  document.getElementById('p-art').textContent=cur.art;
+  document.getElementById('p-name').textContent=cur.name;
+  document.getElementById('p-loc').textContent=cur.loc;
+  document.getElementById('tab-s').className='tab on';
+  document.getElementById('tab-e').className='tab';
+  buildWave();loadText();renderCards();
+  window.scrollTo(0,0);
+}
+
+function setMode(m){
+  if(m===mode)return;
+  synth.cancel();playing=false;
+  clearInterval(wTimer);clearInterval(pTimer);animWave(false);
+  mode=m;
+  document.getElementById('tab-s').className='tab'+(m==='s'?' on':'');
+  document.getElementById('tab-e').className='tab'+(m==='e'?' on':'');
+  loadText();
+}
+
+function loadText(){
+  words=cur[mode].split(' ');
+  elapsed=0;wIdx=0;
+  total=Math.round(words.length/(mode==='s'?125:145)*60);
+  document.getElementById('t-tot').textContent=fmt(total);
+  document.getElementById('t-el').textContent='0:00';
+  document.getElementById('prog-fill').style.width='0%';
+  document.getElementById('btn-play').textContent='▶';
+  playing=false;renderWords(0);
+}
+
+function renderWords(ci){
+  var el=document.getElementById('tbox'),html='<p>';
+  for(var i=0;i<words.length;i++){
+    var c=i<ci?'w-done':(i===ci?'w-now':'w-next');
+    html+='<span class="'+c+'" id="w'+i+'">'+words[i]+' </span>';
+  }
+  el.innerHTML=html+'</p>';
+  var cw=document.getElementById('w'+ci);
+  if(cw)cw.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+function buildWave(){
+  var wf=document.getElementById('wave');wf.innerHTML='';
+  for(var i=0;i<28;i++){var b=document.createElement('div');b.className='wb';wf.appendChild(b);}
+}
+
+function animWave(on){
+  clearInterval(wTimer);
+  var bars=document.querySelectorAll('.wb');
+  for(var i=0;i<bars.length;i++){bars[i].style.height='4px';bars[i].classList.remove('on');}
+  if(!on)return;
+  for(var j=0;j<bars.length;j++)bars[j].classList.add('on');
+  wTimer=setInterval(function(){
+    if(!playing)return;
+    var bs=document.querySelectorAll('.wb');
+    for(var k=0;k<bs.length;k++)bs[k].style.height=(4+Math.random()*24)+'px';
+  },90);
+}
+
+function startTimer(){
+  clearInterval(pTimer);
+  pTimer=setInterval(function(){
+    if(!playing)return;
+    elapsed+=0.5;
+    var pct=Math.min(100,elapsed/total*100);
+    document.getElementById('prog-fill').style.width=pct+'%';
+    document.getElementById('t-el').textContent=fmt(elapsed);
+    wIdx=Math.min(Math.floor(elapsed/total*words.length),words.length-1);
+    renderWords(wIdx);
+    if(elapsed>=total)onEnd();
+  },500);
+}
+
+function onEnd(){
+  playing=false;
+  document.getElementById('btn-play').textContent='▶';
+  animWave(false);clearInterval(pTimer);
+  renderWords(words.length);
+  document.getElementById('prog-fill').style.width='100%';
+}
+
+function getVoice(){
+  var vs=synth.getVoices();
+  for(var i=0;i<vs.length;i++){if(vs[i].lang==='it-IT')return vs[i];}
+  for(var j=0;j<vs.length;j++){if(vs[j].lang.indexOf('it')===0)return vs[j];}
+  return null;
+}
+
+function startSpeech(fromW){
+  synth.cancel();
+  var u=new SpeechSynthesisUtterance(words.slice(fromW).join(' '));
+  var v=getVoice();if(v)u.voice=v;
+  u.lang='it-IT';u.rate=speed;u.pitch=mode==='s'?1.05:0.97;
+  u.onend=function(){if(playing)onEnd();};
+  u.onerror=function(){};
+  synth.speak(u);
+}
+
+function doPlay(){
+  if(!cur)return;
+  if(playing){
+    synth.cancel();playing=false;
+    document.getElementById('btn-play').textContent='▶';
+    animWave(false);clearInterval(pTimer);
+  } else {
+    if(elapsed>=total){elapsed=0;wIdx=0;renderWords(0);document.getElementById('prog-fill').style.width='0%';}
+    startSpeech(wIdx);playing=true;
+    document.getElementById('btn-play').textContent='⏸';
+    animWave(true);startTimer();
+  }
+}
+
+function doRestart(){
+  synth.cancel();playing=false;clearInterval(pTimer);animWave(false);
+  elapsed=0;wIdx=0;renderWords(0);
+  document.getElementById('prog-fill').style.width='0%';
+  document.getElementById('t-el').textContent='0:00';
+  document.getElementById('btn-play').textContent='▶';
+}
+
+function skip(sec){
+  elapsed=Math.max(0,Math.min(total-1,elapsed+sec));
+  wIdx=Math.floor(elapsed/total*words.length);
+  renderWords(wIdx);
+  document.getElementById('prog-fill').style.width=(elapsed/total*100)+'%';
+  document.getElementById('t-el').textContent=fmt(elapsed);
+  if(playing){startSpeech(wIdx);startTimer();}
+}
+
+function cycleSpeed(){
+  sIdx=(sIdx+1)%speeds.length;speed=speeds[sIdx];
+  document.getElementById('btn-speed').textContent=spLbls[sIdx];
+  if(playing)startSpeech(wIdx);
+}
+
+function seekClick(e){
+  var r=e.currentTarget.getBoundingClientRect();
+  var ratio=(e.clientX-r.left)/r.width;
+  elapsed=ratio*total;wIdx=Math.floor(ratio*words.length);
+  renderWords(wIdx);
+  document.getElementById('prog-fill').style.width=(ratio*100)+'%';
+  document.getElementById('t-el').textContent=fmt(elapsed);
+  if(playing){startSpeech(wIdx);startTimer();}
+}
+
+function renderCards(){
+  document.getElementById('flag-card').innerHTML='<div class="card-lbl">Flag validatore</div><div class="card-txt">'+cur.flag+'</div>';
+  document.getElementById('pivot-card').innerHTML='<div class="card-lbl">Pivot commerciale</div><div class="card-txt">'+cur.pivot+'</div><div class="card-cta">'+cur.cta+'</div>';
+}
+
+if(typeof speechSynthesis!=='undefined'&&speechSynthesis.onvoiceschanged!==undefined){
+  speechSynthesis.onvoiceschanged=function(){};
+}
+</script>
+</body>
+</html>
